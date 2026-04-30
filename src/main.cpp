@@ -75,7 +75,7 @@ void setup() {
 }
 
 void loop() {
-    handleUserInputs();
+    // handleUserInputs();
     displayController.update(secondsElapsed, totalCount, cpmBuckets, cpmBucketIndex);
 
     // Advance CPM bucket every second
