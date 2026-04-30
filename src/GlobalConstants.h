@@ -1,0 +1,6 @@
+#ifndef GEIGER_MULLER_COUNTER_GLOBALCONSTANTS_H
+#define GEIGER_MULLER_COUNTER_GLOBALCONSTANTS_H
+
+constexpr int CPM_WINDOW = 300; // one bucket per second → 5-minute rolling window
+
+#endif //GEIGER_MULLER_COUNTER_GLOBALCONSTANTS_H
