@@ -8,8 +8,8 @@
 #define PULSE_PIN PIN_PA2
 #define LED_PIN PIN_PA5
 #define BUZZER_PIN PIN_PA4
-#define BUTTON_A_PIN PIN_PA6
-#define BUTTON_B_PIN PIN_PA7
+#define BUTTON_A_PIN PIN_PA7
+#define BUTTON_B_PIN PIN_PA6
 
 volatile bool pulseDetected       = false;
 volatile unsigned long totalCount = 0;

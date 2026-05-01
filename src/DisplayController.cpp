@@ -40,8 +40,8 @@ void DisplayController::update(const unsigned long secondsElapsed,
 
     display.clearDisplay();
 
-    drawStats(snapshotSecondsElapsed, snapshotTotalCount, snapshotCpmBuckets);
-    drawGraph(snapshotCpmBuckets, snapshotCpmBucketIndex);
+    const unsigned int bucketMax = drawGraph(snapshotCpmBuckets, snapshotCpmBucketIndex);
+    drawStats(snapshotSecondsElapsed, snapshotTotalCount, snapshotCpmBuckets, bucketMax);
 
     display.display();
 }
@@ -50,39 +50,57 @@ void DisplayController::update(const unsigned long secondsElapsed,
 
 void DisplayController::drawStats(const unsigned long secondsElapsed,
                                   const unsigned long totalCount,
-                                  const unsigned int (&cpmBuckets)[CPM_WINDOW]) {
+                                  const unsigned int (&cpmBuckets)[CPM_WINDOW],
+                                  const unsigned int bucketMax) const {
     const long cpm       = getRollingCPM(cpmBuckets);
     const bool warmingUp = secondsElapsed < CPM_WINDOW;
 
     char buf[32];
 
-    // ── Line 1: Total count ──────────────────────────────  y = 0
+    // Labels are padded to 6 characters so the colon always lands at x=36 (6×6 px)
+    // and all values start at VALUE_X = 42, keeping columns visually aligned.
+    // Adafruit_GFX size-1 font: each character is 6 px wide.
+    static constexpr int VALUE_X = 48; // x pixel where values start (8 chars × 6 px)
+
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
+
+    // ── Line 1: Total count ──────────────────────────────  y = 0
     display.setCursor(0, 0);
-    display.print(F("Total: "));
+    display.print(F("Total : "));
+    display.setCursor(VALUE_X, 0);
     display.print(totalCount);
 
     // ── Line 2: Uptime ───────────────────────────────────  y = 10
     formatUptime(secondsElapsed, buf, sizeof(buf));
     display.setCursor(0, 10);
-    display.print(F("Up: "));
+    display.print(F("Up    : "));
+    display.setCursor(VALUE_X, 10);
     display.print(buf);
 
     // ── Line 3: CPM ──────────────────────────────────────  y = 20
     display.setCursor(0, 20);
-    display.print(F("CPM: "));
+    display.print(F("CPM   : "));
+    display.setCursor(VALUE_X, 20);
     display.print(cpm);
     if (warmingUp) {
         display.print(F("*"));
     }
 
+    // ── Scale label — right-aligned on the CPM line ───────────────────────────
+    // ^N = pulse count of the tallest 1-second bucket (graph full-scale reference)
+    char scaleBuf[6];
+    snprintf(scaleBuf, sizeof(scaleBuf), "^%u", bucketMax);
+    const int labelW = static_cast<int>(strlen(scaleBuf)) * 6;
+    display.setCursor(DISPLAY_WIDTH - labelW, 20);
+    display.print(scaleBuf);
+
     // ── Divider above graph ───────────────────────────────  y = 43
     display.drawFastHLine(0, GRAPH_Y - 3, DISPLAY_WIDTH, SSD1306_WHITE);
 }
 
-void DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
-                                  const int cpmBucketIndex) const {
+unsigned int DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
+                                          const int cpmBucketIndex) const {
     // Collapse CPM_WINDOW buckets into DISPLAY_W columns.
     // Each column aggregates (CPM_WINDOW / DISPLAY_W) consecutive seconds.
     // With CPM_WINDOW=300 and DISPLAY_W=128: ~2.34 s per column — we use
@@ -90,7 +108,8 @@ void DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
 
     // Find per-column sums and the max for auto-scaling.
     // We map column i → bucket range [start, end).
-    unsigned int colMax = 1; // avoid division by zero; minimum scale
+    unsigned int colMax    = 1; // avoid division by zero in bar height calculation
+    unsigned int bucketMax = 0; // peak single-bucket pulse count → scale label
     // static: lives in BSS (static RAM), not the stack — saves 256 bytes of stack
     static unsigned int colSums[DISPLAY_WIDTH];
 
@@ -104,8 +123,12 @@ void DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
 
         unsigned int sum = 0;
         for (int bucketIndex = bucketStart; bucketIndex < bucketEnd; bucketIndex++) {
-            const int idx = (cpmBucketIndex + 1 + bucketIndex) % CPM_WINDOW;
-            sum           += cpmBuckets[idx];
+            const int idx                   = (cpmBucketIndex + 1 + bucketIndex) % CPM_WINDOW;
+            const unsigned int bucketPulses = cpmBuckets[idx];
+            sum                             += bucketPulses;
+            if (bucketPulses > bucketMax) {
+                bucketMax = bucketPulses;
+            }
         }
         colSums[col] = sum;
         if (sum > colMax) {
@@ -121,6 +144,8 @@ void DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
         int y = GRAPH_Y + (GRAPH_HEIGHT - barHeight);
         display.drawFastVLine(col, y, barHeight, SSD1306_WHITE);
     }
+
+    return bucketMax;
 }
 
 long DisplayController::getRollingCPM(const unsigned int (&cpmBuckets)[CPM_WINDOW]) {
