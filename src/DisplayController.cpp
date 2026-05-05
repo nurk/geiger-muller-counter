@@ -3,8 +3,8 @@
 #include <util/atomic.h>
 #include <string.h> // NOLINT(*-deprecated-headers) — AVR-libc does not provide <cstring>
 
-DisplayController::DisplayController(Adafruit_SSD1306& displayIn)
-    : display(displayIn) {
+DisplayController::DisplayController(Adafruit_SSD1306& display_)
+    : display(display_) {
 }
 
 void DisplayController::begin() const {

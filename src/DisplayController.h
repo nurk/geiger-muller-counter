@@ -6,7 +6,7 @@
 
 class DisplayController {
 public:
-    explicit DisplayController(Adafruit_SSD1306& displayIn);
+    explicit DisplayController(Adafruit_SSD1306& display_);
 
     void begin() const;
     void update(unsigned long secondsElapsed,
