@@ -14,7 +14,6 @@ public:
                 const volatile uint16_t (&cpmBuckets)[CPM_WINDOW],
                 const volatile uint16_t& cpmBucketIndex);
 
-
 private:
     void drawStats(uint32_t secondsElapsed,
                    uint32_t totalCount,
@@ -24,6 +23,9 @@ private:
     uint16_t drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW], // NOLINT(*-use-nodiscard)
                        uint16_t cpmBucketIndex) const;
 
+    static int32_t getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW]);
+    static void formatUptime(uint32_t totalSeconds, char* buf, size_t len);
+
     Adafruit_SSD1306& display;
 
     static constexpr uint8_t DISPLAY_WIDTH = 128;
@@ -32,10 +34,6 @@ private:
     static constexpr uint16_t UPDATE_MS    = 250;
 
     uint32_t lastUpdateMillis = 0;
-
-
-    static int32_t getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW]);
-    static void    formatUptime(uint32_t totalSeconds, char* buf, size_t len);
 };
 
 #endif //GEIGER_MULLER_COUNTER_DISPLAYCONTROLLER_H
