@@ -11,20 +11,20 @@
 #define BUTTON_A_PIN PIN_PA7
 #define BUTTON_B_PIN PIN_PA6
 
-volatile bool pulseDetected       = false;
-volatile unsigned long totalCount = 0;
-unsigned long secondsElapsed      = 0;
+volatile bool pulseDetected  = false;
+volatile uint32_t totalCount = 0;
+uint32_t secondsElapsed      = 0;
 
-constexpr int LED_ON_TIME      = 10;
-constexpr int BUZZER_ON_TIME   = 3; // Keep short for the old school clicky sound
-constexpr int BUZZER_FREQUENCY = 2500; // if too thin try lowering (2000), if too dull try increasing (3000)
+constexpr uint16_t LED_ON_TIME      = 10;
+constexpr uint16_t BUZZER_ON_TIME   = 3; // Keep short for the old school clicky sound
+constexpr uint16_t BUZZER_FREQUENCY = 2500; // if too thin try lowering (2000), if too dull try increasing (3000)
 
-unsigned long ledOnUntil = 0;
-bool ledIsOn             = false;
+uint32_t ledOnUntil = 0;
+bool ledIsOn        = false;
 
-volatile unsigned int cpmBuckets[CPM_WINDOW] = {};
-volatile int cpmBucketIndex                  = 0;
-unsigned long lastBucketTime                 = 0;
+volatile uint16_t cpmBuckets[CPM_WINDOW] = {};
+volatile uint16_t cpmBucketIndex         = 0;
+uint32_t lastBucketTime                  = 0;
 
 Button buttonA(BUTTON_A_PIN);
 Button buttonB(BUTTON_B_PIN);
@@ -33,13 +33,15 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1); // NOLINT(*-interfaces-global-init
 DisplayController displayController(display);
 
 ISR(PORTA_PORT_vect) {
-    const byte flags = PORTA.INTFLAGS;
-    PORTA.INTFLAGS   = flags; //clear flags
-    if (flags & 0x02) {
+    const uint8_t flags = PORTA.INTFLAGS;
+
+    if (flags & PIN2_bm) {
         pulseDetected = true;
         totalCount++;
         cpmBuckets[cpmBucketIndex]++;
     }
+
+    PORTA.INTFLAGS = flags; // clear flags
 }
 
 void handleUserInputs() {
@@ -81,7 +83,7 @@ void loop() {
     // Advance CPM bucket every second
     if (millis() - lastBucketTime >= 1000) {
         lastBucketTime             += 1000;
-        cpmBucketIndex             = (cpmBucketIndex + 1) % CPM_WINDOW;
+        cpmBucketIndex             = static_cast<uint16_t>((cpmBucketIndex + 1u) % CPM_WINDOW);
         cpmBuckets[cpmBucketIndex] = 0; // clear the oldest bucket
         secondsElapsed++;
     }
@@ -93,7 +95,7 @@ void loop() {
 
     if (pulseDetected) {
 #ifdef DEBUG
-        Serial.print("Pulse detected! Total count: ");
+        Serial.print(F("Pulse detected! Total count: "));
         Serial.println(totalCount);
 #endif
         pulseDetected = false;

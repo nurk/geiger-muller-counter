@@ -3,8 +3,8 @@
 #include <util/atomic.h>
 #include <string.h> // NOLINT(*-deprecated-headers) — AVR-libc does not provide <cstring>
 
-DisplayController::DisplayController(Adafruit_SSD1306& display_)
-    : display(display_) {
+DisplayController::DisplayController(Adafruit_SSD1306& display)
+    : display(display) {
 }
 
 void DisplayController::begin() const {
@@ -12,10 +12,10 @@ void DisplayController::begin() const {
     display.display();
 }
 
-void DisplayController::update(const unsigned long secondsElapsed,
-                               const unsigned long totalCount,
-                               volatile unsigned int (&cpmBuckets)[CPM_WINDOW],
-                               const int cpmBucketIndex) {
+void DisplayController::update(const uint32_t secondsElapsed,
+                               const uint32_t totalCount,
+                               const volatile uint16_t (&cpmBuckets)[CPM_WINDOW],
+                               const uint16_t cpmBucketIndex) {
     if (millis() - lastUpdateMillis < UPDATE_MS) {
         return;
     }
@@ -23,10 +23,10 @@ void DisplayController::update(const unsigned long secondsElapsed,
     lastUpdateMillis = millis();
 
     // static: lives in BSS (static RAM), not the stack — saves 600 bytes of stack
-    static unsigned int snapshotCpmBuckets[CPM_WINDOW];
-    unsigned long snapshotSecondsElapsed = 0;
-    unsigned long snapshotTotalCount     = 0;
-    int snapshotCpmBucketIndex           = 0;
+    static uint16_t snapshotCpmBuckets[CPM_WINDOW];
+    uint32_t snapshotSecondsElapsed = 0;
+    uint32_t snapshotTotalCount     = 0;
+    uint16_t snapshotCpmBucketIndex = 0;
 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         snapshotSecondsElapsed = secondsElapsed;
@@ -34,13 +34,13 @@ void DisplayController::update(const unsigned long secondsElapsed,
         snapshotCpmBucketIndex = cpmBucketIndex;
         // memcpy is much faster than a manual loop — minimizes interrupt-disabled time
         memcpy(snapshotCpmBuckets,
-               const_cast<unsigned int*>(cpmBuckets),
+               const_cast<uint16_t*>(cpmBuckets),
                sizeof(snapshotCpmBuckets));
     }
 
     display.clearDisplay();
 
-    const unsigned int bucketMax = drawGraph(snapshotCpmBuckets, snapshotCpmBucketIndex);
+    const uint16_t bucketMax = drawGraph(snapshotCpmBuckets, snapshotCpmBucketIndex);
     drawStats(snapshotSecondsElapsed, snapshotTotalCount, snapshotCpmBuckets, bucketMax);
 
     display.display();
@@ -48,11 +48,11 @@ void DisplayController::update(const unsigned long secondsElapsed,
 
 // ── private ────────────────────────────────────────────────────────────────
 
-void DisplayController::drawStats(const unsigned long secondsElapsed,
-                                  const unsigned long totalCount,
-                                  const unsigned int (&cpmBuckets)[CPM_WINDOW],
-                                  const unsigned int bucketMax) const {
-    const long cpm       = getRollingCPM(cpmBuckets);
+void DisplayController::drawStats(const uint32_t secondsElapsed,
+                                  const uint32_t totalCount,
+                                  const uint16_t (&cpmBuckets)[CPM_WINDOW],
+                                  const uint16_t bucketMax) const {
+    const int32_t cpm    = getRollingCPM(cpmBuckets);
     const bool warmingUp = secondsElapsed < CPM_WINDOW;
 
     char buf[32];
@@ -60,7 +60,7 @@ void DisplayController::drawStats(const unsigned long secondsElapsed,
     // Labels are padded to 6 characters so the colon always lands at x=36 (6×6 px)
     // and all values start at VALUE_X = 42, keeping columns visually aligned.
     // Adafruit_GFX size-1 font: each character is 6 px wide.
-    static constexpr int VALUE_X = 48; // x pixel where values start (8 chars × 6 px)
+    static constexpr int16_t VALUE_X = 48; // x pixel where values start (8 chars × 6 px)
 
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -91,7 +91,7 @@ void DisplayController::drawStats(const unsigned long secondsElapsed,
     // ^N = pulse count of the tallest 1-second bucket (graph full-scale reference)
     char scaleBuf[6];
     snprintf(scaleBuf, sizeof(scaleBuf), "^%u", bucketMax);
-    const int labelW = static_cast<int>(strlen(scaleBuf)) * 6;
+    const auto labelW = static_cast<int16_t>(strlen(scaleBuf) * 6U);
     display.setCursor(DISPLAY_WIDTH - labelW, 20);
     display.print(scaleBuf);
 
@@ -99,8 +99,8 @@ void DisplayController::drawStats(const unsigned long secondsElapsed,
     display.drawFastHLine(0, GRAPH_Y - 3, DISPLAY_WIDTH, SSD1306_WHITE);
 }
 
-unsigned int DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_WINDOW],
-                                          const int cpmBucketIndex) const {
+uint16_t DisplayController::drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW],
+                                      const uint16_t cpmBucketIndex) const {
     // Collapse CPM_WINDOW buckets into DISPLAY_W columns.
     // Each column aggregates (CPM_WINDOW / DISPLAY_W) consecutive seconds.
     // With CPM_WINDOW=300 and DISPLAY_W=128: ~2.34 s per column — we use
@@ -108,10 +108,10 @@ unsigned int DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_W
 
     // Find per-column sums and the max for auto-scaling.
     // We map column i → bucket range [start, end).
-    unsigned int colMax    = 1; // avoid division by zero in bar height calculation
-    unsigned int bucketMax = 0; // peak single-bucket pulse count → scale label
+    uint16_t colMax    = 1; // avoid division by zero in bar height calculation
+    uint16_t bucketMax = 0; // peak single-bucket pulse count → scale label
     // static: lives in BSS (static RAM), not the stack — saves 256 bytes of stack
-    static unsigned int colSums[DISPLAY_WIDTH];
+    static uint16_t colSums[DISPLAY_WIDTH];
 
     for (int col = 0; col < DISPLAY_WIDTH; col++) {
         // Map column to bucket indices (oldest → newest, left → right)
@@ -121,11 +121,11 @@ unsigned int DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_W
             bucketEnd = bucketStart + 1; // at least 1
         }
 
-        unsigned int sum = 0;
+        uint16_t sum = 0;
         for (int bucketIndex = bucketStart; bucketIndex < bucketEnd; bucketIndex++) {
-            const int idx                   = (cpmBucketIndex + 1 + bucketIndex) % CPM_WINDOW;
-            const unsigned int bucketPulses = cpmBuckets[idx];
-            sum                             += bucketPulses;
+            const uint16_t idx          = (cpmBucketIndex + 1 + bucketIndex) % CPM_WINDOW;
+            const uint16_t bucketPulses = cpmBuckets[idx];
+            sum                         += bucketPulses;
             if (bucketPulses > bucketMax) {
                 bucketMax = bucketPulses;
             }
@@ -137,20 +137,21 @@ unsigned int DisplayController::drawGraph(const unsigned int (&cpmBuckets)[CPM_W
     }
 
     for (int col = 0; col < DISPLAY_WIDTH; col++) {
-        int barHeight = (static_cast<int>(colSums[col]) * GRAPH_HEIGHT) / static_cast<int>(colMax);
+        auto barHeight = static_cast<int16_t>((static_cast<int>(colSums[col]) * GRAPH_HEIGHT) / static_cast<int>(
+            colMax));
         if (barHeight < 1 && colSums[col] > 0u) {
             barHeight = 1;
         }
-        int y = GRAPH_Y + (GRAPH_HEIGHT - barHeight);
+        const auto y = static_cast<int16_t>(GRAPH_Y + (GRAPH_HEIGHT - barHeight));
         display.drawFastVLine(col, y, barHeight, SSD1306_WHITE);
     }
 
     return bucketMax;
 }
 
-long DisplayController::getRollingCPM(const unsigned int (&cpmBuckets)[CPM_WINDOW]) {
-    long counts = 0;
-    for (const unsigned int cpmBucket : cpmBuckets) {
+int32_t DisplayController::getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW]) {
+    int32_t counts = 0;
+    for (const uint16_t cpmBucket : cpmBuckets) {
         counts += cpmBucket;
     }
     // Normalize: window holds CPM_WINDOW seconds of data, CPM = counts/min
@@ -158,11 +159,11 @@ long DisplayController::getRollingCPM(const unsigned int (&cpmBuckets)[CPM_WINDO
 }
 
 // ReSharper disable once CppDFAConstantParameter
-void DisplayController::formatUptime(const unsigned long totalSeconds, char* buf, const size_t len) {
-    const unsigned long days    = totalSeconds / 86400UL;
-    const unsigned long hours   = (totalSeconds % 86400UL) / 3600UL;
-    const unsigned long minutes = (totalSeconds % 3600UL) / 60UL;
-    const unsigned long seconds = totalSeconds % 60UL;
+void DisplayController::formatUptime(const uint32_t totalSeconds, char* buf, const size_t len) {
+    const uint32_t days    = totalSeconds / 86400UL;
+    const uint32_t hours   = (totalSeconds % 86400UL) / 3600UL;
+    const uint32_t minutes = (totalSeconds % 3600UL) / 60UL;
+    const uint32_t seconds = totalSeconds % 60UL;
     if (days > 0) {
         snprintf(buf, len, "%lud %02lu:%02lu:%02lu", days, hours, minutes, seconds);
     } else {

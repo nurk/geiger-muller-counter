@@ -1,0 +1,14 @@
+name: geiger-muller-counter
+version: 1.0.0
+description: APM project for geiger-muller-counter
+author: Tom Briers
+targets:
+- copilot
+dependencies:
+  apm:
+    - git: github.com/nurk/apm-packages
+      path: cpp-embedded-style
+      ref: master
+  mcp: []
+includes: auto
+scripts: {}

@@ -1,2 +1,7 @@
 .pio
 .idea
+
+
+# APM dependencies
+apm_modules/
+/.agents/
