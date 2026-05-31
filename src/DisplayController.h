@@ -10,9 +10,9 @@ public:
 
     void begin() const;
     void update(uint32_t secondsElapsed,
-                uint32_t totalCount,
+                const volatile uint32_t& totalCount,
                 const volatile uint16_t (&cpmBuckets)[CPM_WINDOW],
-                uint16_t cpmBucketIndex);
+                const volatile uint16_t& cpmBucketIndex);
 
 
 private:

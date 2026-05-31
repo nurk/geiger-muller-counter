@@ -13,9 +13,9 @@ void DisplayController::begin() const {
 }
 
 void DisplayController::update(const uint32_t secondsElapsed,
-                               const uint32_t totalCount,
+                               const volatile uint32_t& totalCount,
                                const volatile uint16_t (&cpmBuckets)[CPM_WINDOW],
-                               const uint16_t cpmBucketIndex) {
+                               const volatile uint16_t& cpmBucketIndex) {
     if (millis() - lastUpdateMillis < UPDATE_MS) {
         return;
     }

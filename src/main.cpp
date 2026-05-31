@@ -4,6 +4,7 @@
 #include <Adafruit_SSD1306.h>
 #include <DisplayController.h>
 #include <GlobalConstants.h>
+#include <util/atomic.h>
 
 #define PULSE_PIN PIN_PA2
 #define LED_PIN PIN_PA5
@@ -82,9 +83,11 @@ void loop() {
 
     // Advance CPM bucket every second
     if (millis() - lastBucketTime >= 1000) {
-        lastBucketTime             += 1000;
-        cpmBucketIndex             = static_cast<uint16_t>((cpmBucketIndex + 1u) % CPM_WINDOW);
-        cpmBuckets[cpmBucketIndex] = 0; // clear the oldest bucket
+        lastBucketTime += 1000;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            cpmBucketIndex             = static_cast<uint16_t>((cpmBucketIndex + 1u) % CPM_WINDOW);
+            cpmBuckets[cpmBucketIndex] = 0; // clear the oldest bucket
+        }
         secondsElapsed++;
     }
 
@@ -96,7 +99,11 @@ void loop() {
     if (pulseDetected) {
 #ifdef DEBUG
         Serial.print(F("Pulse detected! Total count: "));
-        Serial.println(totalCount);
+        uint32_t totalCountSnapshot = 0;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            totalCountSnapshot = totalCount;
+        }
+        Serial.println(totalCountSnapshot);
 #endif
         pulseDetected = false;
 
