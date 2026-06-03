@@ -48,6 +48,10 @@ ISR(PORTA_PORT_vect) {
 void handleUserInputs() {
     buttonA.read();
     buttonB.read();
+
+    if (buttonA.wasPressed() || buttonB.wasPressed()) {
+        pulseDetected = true;
+    }
 }
 
 void setup() {
@@ -78,7 +82,10 @@ void setup() {
 }
 
 void loop() {
-    // handleUserInputs();
+#ifdef DEBUG
+    handleUserInputs();
+#endif
+
     displayController.update(secondsElapsed, totalCount, cpmBuckets, cpmBucketIndex);
 
     // Advance CPM bucket every second
