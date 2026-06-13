@@ -6,9 +6,9 @@ targets:
 - copilot
 dependencies:
   apm:
-    - git: github.com/nurk/apm-packages
-      path: cpp-embedded-style
-      ref: master
+  - git: github.com/nurk/apm-packages
+    path: cpp-embedded-style
+    ref: master
   mcp: []
 includes: auto
 scripts: {}
