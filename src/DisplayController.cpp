@@ -52,7 +52,7 @@ void DisplayController::drawStats(const uint32_t secondsElapsed,
                                   const uint32_t totalCount,
                                   const uint16_t (&cpmBuckets)[CPM_WINDOW],
                                   const uint16_t bucketMax) const {
-    const int32_t cpm    = getRollingCPM(cpmBuckets);
+    const int32_t cpm    = getRollingCPM(cpmBuckets, secondsElapsed);
     const bool warmingUp = secondsElapsed < CPM_WINDOW;
 
     char buf[32];
@@ -103,12 +103,11 @@ uint16_t DisplayController::drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW],
                                       const uint16_t cpmBucketIndex) const {
     // Collapse CPM_WINDOW buckets into DISPLAY_W columns.
     // Each column aggregates (CPM_WINDOW / DISPLAY_W) consecutive seconds.
-    // With CPM_WINDOW=300 and DISPLAY_W=128: ~2.34 s per column — we use
-    // integer bucketsPerCol and spread the remainder evenly via the index mapping.
+    // With CPM_WINDOW=300 and DISPLAY_W=128: ~2.34 s per column.
 
-    // Find per-column sums and the max for auto-scaling.
-    // We map column i → bucket range [start, end).
-    uint16_t colMax    = 1; // avoid division by zero in bar height calculation
+    // Find per-column sums and the max average for auto-scaling.
+    // We scale averages by 12 to maintain exact integer precision (since denominators are 2 or 3).
+    uint16_t colMax    = 12; // default to 1 CPS (12/12) to avoid division by zero and handle low rates
     uint16_t bucketMax = 0; // peak single-bucket pulse count → scale label
     // static: lives in BSS (static RAM), not the stack — saves 256 bytes of stack
     static uint16_t colSums[DISPLAY_WIDTH];
@@ -130,15 +129,19 @@ uint16_t DisplayController::drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW],
                 bucketMax = bucketPulses;
             }
         }
-        colSums[col] = sum;
-        if (sum > colMax) {
-            colMax = sum;
+
+        const int width = bucketEnd - bucketStart;
+        // Scale by 12 for exact average (12 is divisible by both 2 and 3)
+        const auto avgScaled = static_cast<uint16_t>((static_cast<uint32_t>(sum) * 12UL) / width);
+        colSums[col]         = avgScaled;
+
+        if (avgScaled > colMax) {
+            colMax = avgScaled;
         }
     }
 
     for (int col = 0; col < DISPLAY_WIDTH; col++) {
-        auto barHeight = static_cast<int16_t>((static_cast<int>(colSums[col]) * GRAPH_HEIGHT) / static_cast<int>(
-            colMax));
+        auto barHeight = static_cast<int16_t>((static_cast<uint32_t>(colSums[col]) * GRAPH_HEIGHT) / colMax);
         if (barHeight < 1 && colSums[col] > 0u) {
             barHeight = 1;
         }
@@ -149,13 +152,17 @@ uint16_t DisplayController::drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW],
     return bucketMax;
 }
 
-int32_t DisplayController::getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW]) {
+int32_t DisplayController::getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW], const uint32_t secondsElapsed) {
     int32_t counts = 0;
     for (const uint16_t cpmBucket : cpmBuckets) {
         counts += cpmBucket;
     }
-    // Normalize: window holds CPM_WINDOW seconds of data, CPM = counts/min
-    return (counts * 60L) / CPM_WINDOW;
+    if (secondsElapsed == 0) {
+        return 0;
+    }
+    const uint32_t divisor = (secondsElapsed < CPM_WINDOW) ? secondsElapsed : CPM_WINDOW;
+    // Normalize: window holds divisor seconds of data, CPM = counts * 60 / divisor
+    return static_cast<int32_t>(counts * 60L / divisor);
 }
 
 // ReSharper disable once CppDFAConstantParameter

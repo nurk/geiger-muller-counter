@@ -23,7 +23,7 @@ private:
     uint16_t drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW], // NOLINT(*-use-nodiscard)
                        uint16_t cpmBucketIndex) const;
 
-    static int32_t getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW]);
+    static int32_t getRollingCPM(const uint16_t (&cpmBuckets)[CPM_WINDOW], uint32_t secondsElapsed);
     static void formatUptime(uint32_t totalSeconds, char* buf, size_t len);
 
     Adafruit_SSD1306& display;
