@@ -140,8 +140,11 @@ uint16_t DisplayController::drawGraph(const uint16_t (&cpmBuckets)[CPM_WINDOW],
         }
     }
 
+    // Use bucketMax as the scale divisor to match the label
+    const uint16_t divisor = (bucketMax > 0) ? bucketMax : 12;
     for (int col = 0; col < DISPLAY_WIDTH; col++) {
-        auto barHeight = static_cast<int16_t>((static_cast<uint32_t>(colSums[col]) * GRAPH_HEIGHT) / colMax);
+        auto barHeight = static_cast<int16_t>((static_cast<uint32_t>(colSums[col]) * GRAPH_HEIGHT) / (static_cast<
+            uint32_t>(divisor) * 12UL));
         if (barHeight < 1 && colSums[col] > 0u) {
             barHeight = 1;
         }
