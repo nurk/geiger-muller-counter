@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-06-01T12:59:28.901302+00:00'
-apm_version: 0.16.0
+generated_at: '2026-06-14T08:18:31.720886+00:00'
+apm_version: 0.20.0
 dependencies:
 - repo_url: nurk/apm-packages
   host: github.com
@@ -11,4 +11,7 @@ dependencies:
   package_type: apm_package
   deployed_files:
   - .agents/skills/cpp-embedded-style
+  - .agents/skills/cpp-embedded-style/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/cpp-embedded-style/SKILL.md: sha256:0e74389be2cb77486459a59160b94e96864a023a48b0a670870b022fab15a606
   content_hash: sha256:25eccee9f9821e00f16aaf86a7d57c747a31e13ff4d74dc97f169135496ea04d
